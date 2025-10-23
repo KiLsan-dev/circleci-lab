@@ -1,0 +1,60 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      
+      # Восстановление кэша зависимостей
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v1-dependencies-
+      
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -r requirements.txt
+      
+      # Сохранение кэша зависимостей
+      - save_cache:
+          paths:
+            - /home/circleci/.cache/pip
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+      
+      - run:
+          name: Run tests
+          command: pytest -v --junitxml=test-results/junit.xml
+      
+      # Сохранение результатов тестов
+      - store_test_results:
+          path: test-results
+
+  lint:
+    docker:
+      - image: cimg/python:3.11
+    steps:
+      - checkout
+      
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v1-dependencies-
+      
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -r requirements.txt
+      
+      - run:
+          name: Check code formatting with Black
+          command: black --check --diff .
+
+workflows:
+  version: 2
+  build-test-lint:
+    jobs:
+      - test
+      - lint
